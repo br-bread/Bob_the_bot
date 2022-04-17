@@ -17,3 +17,4 @@ class PlantedPlant(SqlAlchemyBase):
     plant_id = sqlalchemy.Column(sqlalchemy.Integer,
                                 sqlalchemy.ForeignKey("plants.id"))
     plant = orm.relation('Plant')
+
