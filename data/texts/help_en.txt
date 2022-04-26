@@ -1,0 +1,13 @@
+I am a bot that can help users to take care of their health by growing their own virtual garden.
+
+<b>Existing commands:</b>
+
+/help - instructions for working with the bot
+/info - information about the bot
+
+<b>Logout</b> - /logout
+
+<b>Language change:</b>
+
+/language_en - changing to English
+/language_ru - changing to Russian

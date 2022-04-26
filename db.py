@@ -7,12 +7,7 @@ class DB:
     @staticmethod
     def add(obj, name, *others):
         if obj == "plant":
-            plant = PlantedPlant()
-            plant.name = name
-            plant.growth_param = 0
-            plant.user_id = others[0]
-            plant.plant_id = others[1]
-
+            plant = PlantedPlant(name=name, growth_param=0, user_id=others[0], plant_id=others[1])
             db_sess = db_session.create_session()
             db_sess.add(plant)
             db_sess.commit()
