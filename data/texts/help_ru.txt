@@ -9,5 +9,5 @@
 
 <b>Смена языка:</b>
 
-/language_en - смена языка на английский
+/language_en - changing to English
 /language_ru - смена языка на русский

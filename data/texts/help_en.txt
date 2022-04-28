@@ -10,4 +10,4 @@ I am a bot that can help users to take care of their health by growing their own
 <b>Language change:</b>
 
 /language_en - changing to English
-/language_ru - changing to Russian
+/language_ru - смена языка на русский

@@ -15,8 +15,8 @@ class DB:
         elif obj == "user":
             user = User()
             user.login = name
-            user.set_password(others[0])
-            user.now_plant_id(others[1])
+            user.hashed_password = others[0]
+            user.current_plant_id = None
 
             db_sess = db_session.create_session()
             db_sess.add(user)
@@ -30,3 +30,4 @@ class DB:
     @staticmethod
     def query():
         pass
+        # Нет смысла писать, используется напрямую через sqlalchemy
