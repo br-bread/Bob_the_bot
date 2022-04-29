@@ -2,6 +2,7 @@ I am a bot that can help users to take care of their health by growing their own
 
 <b>Existing commands:</b>
 
+/start - restarting the bot
 /help - instructions for working with the bot
 /info - information about the bot
 
