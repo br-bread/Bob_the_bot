@@ -16,8 +16,10 @@ password = None
 current_plant = None
 talk = 0
 add = 0
+water = 0
 waiting_for_name = 0
 waiting_for_type = 0
+chat_id = None
 
 plants = {"Лисохвост": "Acalypha",
           "Звёздчатый кактус": "Astrophytum",
@@ -33,11 +35,26 @@ def talking(update, context, story=False):
     reply_keyboard = [['Расскажи что-нибудь', 'Закончить разговор'],
                       []]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    update.message.reply_text(
-        "Я понимаю вас! Хорошая сегодня погода, кстати.", reply_markup=markup)
+
     if story:
         update.message.reply_text(
             "Могу рассказать вам одну историю.", reply_markup=markup)
+    else:
+        update.message.reply_text(
+            "Я понимаю вас! Хорошая сегодня погода, кстати.", reply_markup=markup)
+
+
+def watering(update, context):
+    global water
+    db_sess = db_session.create_session()
+    data = db_sess.query(PlantedPlant).filter(PlantedPlant.id == current_plant).first()
+    data.growth_param = data.growth_param + 5
+    db_sess.commit()
+    pl = db_sess.query(Plant).filter(Plant.id == current_plant).first()
+    print(pl.latin_name, data.growth_param // 10 + 1)
+    context.bot.send_photo(chat_id=update.message.chat_id,
+                           photo=open(f'./data/graphics/{pl.latin_name}/img_{str(data.growth_param // 10 + 1)}.png', 'rb'))
+    water = 0
 
 
 def plant(update, context):
@@ -72,13 +89,15 @@ def plant(update, context):
             text=f"Превосходно! {update.message.text} теперь в вашем саду!",
             parse_mode=telegram.ParseMode.HTML)
 
-        context.bot.send_photo(chat_id=update.message.chat_id, photo=open(f'./data/graphics/{current_plant}/img_1.png', 'rb'))
+        context.bot.send_photo(chat_id=update.message.chat_id,
+                               photo=open(f'./data/graphics/{current_plant}/img_1.png', 'rb'))
         current_plant = db_sess.query(PlantedPlant).filter(PlantedPlant.name == update.message.text).first()
         db_sess.commit()
 
 
 def message(update, context):
-    global user, password, talk, add, waiting_for_type, current_plant
+    global user, password, talk, add, waiting_for_type, current_plant, water, chat_id
+    chat_id = update.message.chat_id
     if user is None:
         user = update.message.text
         user_in_base = 0
@@ -169,7 +188,9 @@ def message(update, context):
             waiting_for_type = 1
         else:
             plant(update, context)
-    if password is not None and current_plant is None and not talk and not add:
+    elif water:
+        watering(update, context)
+    if password is not None and current_plant is None and not talk and not add and not water:
         button_list = [
             InlineKeyboardButton("Посадить растение", callback_data="add"),
             InlineKeyboardButton("Посмотреть сад", callback_data="look"),
@@ -179,7 +200,7 @@ def message(update, context):
         update.message.reply_text(
             f"Кажется, у вас нет текущего растения. Посадить новое?",
             parse_mode=telegram.ParseMode.HTML, reply_markup=reply_markup)
-    if current_plant is not None and not talk and not add:
+    if current_plant is not None and not talk and not add and not water:
         button_list = [
             InlineKeyboardButton("Полить растение", callback_data="water"),
             InlineKeyboardButton("Посмотреть сад", callback_data="look"),
@@ -215,6 +236,13 @@ def button_pressed(update, context):
             text=f"Чтобы заботиться о ком-то, нужно научиться заботиться о себе."
                  f" Чтобы полить свое растение, вам нужно сделать что-то полезное для своего здоровья.",
             parse_mode=telegram.ParseMode.HTML)
+        button_list = [["Выпил 2 стакана воды", "Спал 8 часов", "Прогулка 30мин - 1 час", "Прогулка > часа"],
+                       ["Сделал зарядку", "Съел овощной салат", "Генеральная уборка", "Принял витамины"]]
+        reply_markup = ReplyKeyboardMarkup(button_list)
+        context.bot.send_message(chat_id=chat_id,
+                                 text=f"Что такого вы недавно сделали?",
+                                 reply_markup=reply_markup)
+
     elif choice == "Acalypha":
         query.edit_message_text(
             text=f"{user}, хороший выбор! Как вы назовёте своё растение?<i>(Введите имя для растения)</i>",
@@ -277,7 +305,6 @@ def main():
     # DB.add("plant", "hop", 4, 3)
     updater = Updater(TOKEN)
     dp = updater.dispatcher
-
 
     text_handler = MessageHandler(Filters.text & ~Filters.command, message)
 
