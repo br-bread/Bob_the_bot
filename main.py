@@ -8,6 +8,7 @@ from data.garden import PlantedPlant
 from data.users import User
 from data.plants import Plant
 from db import DB
+import sqlalchemy
 
 TOKEN = '5235508319:AAH_BNimCWuKBi1K2h71zey92tq1RMMmreg'
 language = 'ru'
@@ -45,15 +46,26 @@ def talking(update, context, story=False):
 
 
 def watering(update, context):
-    global water
+    global water, current_plant
     db_sess = db_session.create_session()
     data = db_sess.query(PlantedPlant).filter(PlantedPlant.id == current_plant).first()
+    plant_id = data.plant_id
     data.growth_param = data.growth_param + 5
     db_sess.commit()
-    pl = db_sess.query(Plant).filter(Plant.id == current_plant).first()
-    print(pl.latin_name, data.growth_param // 10 + 1)
+    pl = db_sess.query(Plant).filter(Plant.id == plant_id).first()
+
     context.bot.send_photo(chat_id=update.message.chat_id,
-                           photo=open(f'./data/graphics/{pl.latin_name}/img_{str(data.growth_param // 10 + 1)}.png', 'rb'))
+                           photo=open(f'./data/graphics/{pl.latin_name}/img_{str(data.growth_param // 10 + 1)}.png',
+                                      'rb'), reply_markup=ReplyKeyboardRemove())
+    if data.growth_param // 10 + 1 == 4:
+        current_plant = None
+        uuser = db_sess.query(User).filter(User.login == user).first()
+        uuser.current_plant_id = sqlalchemy.sql.null()
+        update.message.reply_text(
+            text=f"Посмотрите, как вырос {data.name}! Теперь вы можете посадить другое растение.",
+            parse_mode=telegram.ParseMode.HTML, reply_markup=ReplyKeyboardRemove())
+        db_sess.commit()
+
     water = 0
 
 
@@ -73,25 +85,33 @@ def plant(update, context):
                      f"что у меня есть? <i>(Выберите вариант из предлагаемых на клавиатуре)</i>",
                 parse_mode=telegram.ParseMode.HTML)
     else:
-        waiting_for_name = 0
-        add = 0
         db_sess = db_session.create_session()
-        data = db_sess.query(Plant).filter(Plant.latin_name == current_plant).first()
-        plant_id = data.id
+        uuser = db_sess.query(User).filter(User.login == user).first()
+        is_planted = db_sess.query(PlantedPlant).filter(PlantedPlant.name == update.message.text,
+                                                        PlantedPlant.user_id == uuser.id).first()
+        if is_planted:
+            update.message.reply_text(
+                text=f"Кажется, в вашем саду уже есть растение с таким именем.<i>(Введите другое имя)</i>",
+                parse_mode=telegram.ParseMode.HTML)
+        else:
+            waiting_for_name = 0
+            add = 0
+            plant_id = db_sess.query(Plant).filter(Plant.latin_name == current_plant).first().id
 
-        data = db_sess.query(User).filter(User.login == user).first()
-        data.current_plant_id = plant_id
-        user_id = data.id
+            DB.add("plant", update.message.text, uuser.id, plant_id)
+            current_plant = uuser.current_plant_id = db_sess.query(PlantedPlant).filter(
+                PlantedPlant.user_id == uuser.id,
+                PlantedPlant.name == update.message.text).first().id
 
-        DB.add("plant", update.message.text, user_id, plant_id)
+            update.message.reply_text(
+                text=f"Превосходно! {update.message.text} теперь в вашем саду!",
+                parse_mode=telegram.ParseMode.HTML)
 
-        update.message.reply_text(
-            text=f"Превосходно! {update.message.text} теперь в вашем саду!",
-            parse_mode=telegram.ParseMode.HTML)
+            context.bot.send_photo(chat_id=update.message.chat_id,
+                                   photo=open(
+                                       f'./data/graphics/{db_sess.query(Plant).filter(Plant.id == plant_id).first().latin_name}/img_1.png',
+                                       'rb'))
 
-        context.bot.send_photo(chat_id=update.message.chat_id,
-                               photo=open(f'./data/graphics/{current_plant}/img_1.png', 'rb'))
-        current_plant = db_sess.query(PlantedPlant).filter(PlantedPlant.name == update.message.text).first()
         db_sess.commit()
 
 
@@ -149,6 +169,7 @@ def message(update, context):
             if password_is_correct:
                 db_sess = db_session.create_session()
                 current_plant = db_sess.query(User).filter(User.login == user).first().current_plant_id
+
                 if language == 'ru':
                     update.message.reply_text(
                         f"<i>Авторизация прошла успешно</i>",
@@ -252,11 +273,16 @@ def button_pressed(update, context):
 
 # Commands
 def start(update, context):
-    global user, password, current_plant, waiting_for_name
+    global user, password, current_plant, waiting_for_name, talk, add, water, waiting_for_type, chat_id
     user = None
     password = None
     current_plant = None
     waiting_for_name = 0
+    talk = 0
+    add = 0
+    water = 0
+    waiting_for_type = 0
+    chat_id = None
     if language == 'ru':
         update.message.reply_text("Чтобы начать работу, нам нужно познакомиться! Как вас зовут? <i>(Введите логин)</i>",
                                   parse_mode=telegram.ParseMode.HTML)
@@ -292,9 +318,11 @@ def language_ru(update, context):
 
 def logout(update, context):
     if language == 'ru':
-        update.message.reply_text("<i>Выход из аккаунта</i>", parse_mode=telegram.ParseMode.HTML)
+        update.message.reply_text("<i>Выход из аккаунта</i>", parse_mode=telegram.ParseMode.HTML,
+                                  reply_markup=ReplyKeyboardRemove())
     else:
-        update.message.reply_text("<i>Logout</i>", parse_mode=telegram.ParseMode.HTML)
+        update.message.reply_text("<i>Logout</i>", parse_mode=telegram.ParseMode.HTML,
+                                  reply_markup=ReplyKeyboardRemove())
 
     start(update, context)
 
