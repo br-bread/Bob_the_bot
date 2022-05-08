@@ -22,6 +22,8 @@ waiting_for_name = 0
 waiting_for_type = 0
 chat_id = None
 
+button_list = [["Выпил 2 стакана воды", "Спал 8 часов", "Прогулка 30мин - 1 час", "Прогулка > часа"],
+               ["Сделал зарядку", "Съел овощной салат", "Генеральная уборка", "Принял витамины"]]
 plants = {"Лисохвост": "Acalypha",
           "Звёздчатый кактус": "Astrophytum",
           "Азалия": "Azalea",
@@ -46,27 +48,40 @@ def talking(update, context, story=False):
 
 
 def watering(update, context):
-    global water, current_plant
-    db_sess = db_session.create_session()
-    data = db_sess.query(PlantedPlant).filter(PlantedPlant.id == current_plant).first()
-    plant_id = data.plant_id
-    data.growth_param = data.growth_param + 5
-    db_sess.commit()
-    pl = db_sess.query(Plant).filter(Plant.id == plant_id).first()
-
-    context.bot.send_photo(chat_id=update.message.chat_id,
-                           photo=open(f'./data/graphics/{pl.latin_name}/img_{str(data.growth_param // 10 + 1)}.png',
-                                      'rb'), reply_markup=ReplyKeyboardRemove())
-    if data.growth_param // 10 + 1 == 4:
-        current_plant = None
-        uuser = db_sess.query(User).filter(User.login == user).first()
-        uuser.current_plant_id = sqlalchemy.sql.null()
+    global water, current_plant, button_list
+    text = update.message.text
+    if text not in button_list[0] and text not in button_list[1]:
         update.message.reply_text(
-            text=f"Посмотрите, как вырос {data.name}! Теперь вы можете посадить другое растение.",
-            parse_mode=telegram.ParseMode.HTML, reply_markup=ReplyKeyboardRemove())
+            text=f"Я не уверен, что это что-то полезное. Выберите что-то из того, что я предлагаю сделать! "
+                 f"<i>(Выберите вариант из предлагаемых на клавиатуре)</i>",
+            parse_mode=telegram.ParseMode.HTML)
+    else:
+        db_sess = db_session.create_session()
+        data = db_sess.query(PlantedPlant).filter(PlantedPlant.id == current_plant).first()
+        plant_id = data.plant_id
+        if text == button_list[0][0] or text == button_list[1][1] or text == button_list[1][3]:
+            data.growth_param = data.growth_param + 1
+        elif text == button_list[0][3] or text == button_list[1][2]:
+            data.growth_param = data.growth_param + 5
+        else:
+            data.growth_param = data.growth_param + 3
         db_sess.commit()
+        pl = db_sess.query(Plant).filter(Plant.id == plant_id).first()
+        update.message.reply_text(
+            text=f"{data.name} растёт! Продолжайте поливать его.")
+        context.bot.send_photo(chat_id=update.message.chat_id,
+                               photo=open(f'./data/graphics/{pl.latin_name}/img_{str(data.growth_param // 10 + 1)}.png',
+                                          'rb'), reply_markup=ReplyKeyboardRemove())
+        if data.growth_param // 10 + 1 == 4:
+            current_plant = None
+            uuser = db_sess.query(User).filter(User.login == user).first()
+            uuser.current_plant_id = sqlalchemy.sql.null()
+            update.message.reply_text(
+                text=f"Посмотрите, как вырос {data.name}! Теперь вы можете посадить другое растение.",
+                parse_mode=telegram.ParseMode.HTML, reply_markup=ReplyKeyboardRemove())
+            db_sess.commit()
 
-    water = 0
+        water = 0
 
 
 def plant(update, context):
@@ -234,7 +249,7 @@ def message(update, context):
 
 
 def button_pressed(update, context):
-    global waiting_for_name, talk, add, water
+    global waiting_for_name, talk, add, water, button_list
     query = update.callback_query
     choice = query.data
 
@@ -257,8 +272,7 @@ def button_pressed(update, context):
             text=f"Чтобы заботиться о ком-то, нужно научиться заботиться о себе."
                  f" Чтобы полить свое растение, вам нужно сделать что-то полезное для своего здоровья.",
             parse_mode=telegram.ParseMode.HTML)
-        button_list = [["Выпил 2 стакана воды", "Спал 8 часов", "Прогулка 30мин - 1 час", "Прогулка > часа"],
-                       ["Сделал зарядку", "Съел овощной салат", "Генеральная уборка", "Принял витамины"]]
+
         reply_markup = ReplyKeyboardMarkup(button_list)
         context.bot.send_message(chat_id=chat_id,
                                  text=f"Что такого вы недавно сделали?",
