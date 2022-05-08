@@ -2,13 +2,14 @@ import telegram
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler
 from data import db_session
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 
 from data.garden import PlantedPlant
 from data.users import User
 from data.plants import Plant
 from db import DB
 import sqlalchemy
+from random import choice
 
 TOKEN = '5235508319:AAH_BNimCWuKBi1K2h71zey92tq1RMMmreg'
 language = 'ru'
@@ -37,14 +38,37 @@ plants = {"Лисохвост": "Acalypha",
 def talking(update, context, story=False):
     reply_keyboard = [['Расскажи что-нибудь', 'Закончить разговор'],
                       []]
+    if language == "en":
+        reply_keyboard = [['Tell me something', 'Finish conversation'],
+                          []]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
 
     if story:
-        update.message.reply_text(
-            "Могу рассказать вам одну историю.", reply_markup=markup)
+        num = choice(["1", "2", "3"])
+        file = open(f"./data/texts/stories/story{num}_{language}.txt", encoding="utf-8")
+        data = file.read()
+        update.message.reply_text(data)
+        if num == "3":
+            if language == "ru":
+                update.message.reply_text(
+                    f"Разве это плохо, {user}? Мне нравится мой цвет.", reply_markup=markup)
+            else:
+                update.message.reply_text(
+                    f"Is that a bad thing, {user}? I really like green color.", reply_markup=markup)
+
     else:
-        update.message.reply_text(
-            "Я понимаю вас! Хорошая сегодня погода, кстати.", reply_markup=markup)
+        if language == "ru":
+            update.message.reply_text(
+                choice(["Я понимаю вас! Хорошая сегодня погода, кстати.", "Замечательно!",
+                        "Кажется, мне стоит больше практиковаться в изучении языков...",
+                        "Даже не знаю, что и сказать. Но вы можете попросить меня рассказать вам что-нибудь!"]),
+                reply_markup=markup)
+        else:
+            update.message.reply_text(
+                choice(["I understand! The weather is good today, by the way.", "Great!",
+                        "I think i should practice more in languages",
+                        "I really don't know what to say. But you can ask me to tell you something!"]),
+                reply_markup=markup)
 
 
 def watering(update, context):
@@ -89,6 +113,9 @@ def plant(update, context):
     if not waiting_for_name:
         if update.message.text in plants.keys():
             current_plant = plants[update.message.text]
+            file = open(f"./data/texts/{current_plant}_info_{language}.txt", encoding="utf-8")
+            data = file.read()
+            update.message.reply_text(data)
             update.message.reply_text(
                 text=f"Отличный выбор! Как вы его назовёте?<i>(Введите имя растения)</i>",
                 parse_mode=telegram.ParseMode.HTML, reply_markup=ReplyKeyboardRemove())
@@ -204,12 +231,17 @@ def message(update, context):
                         parse_mode=telegram.ParseMode.HTML)
                 start(update, context)
     elif talk == 1:
-        if update.message.text == "Закончить разговор":
+        if update.message.text == "Закончить разговор" or update.message.text == "Finish conversation":
             talk = 0
-            update.message.reply_text(
-                f"Буду рад снова пообщаться с вами, {user}.",
-                reply_markup=ReplyKeyboardRemove())
-        elif update.message.text == "Расскажи что-нибудь":
+            if language == "ru":
+                update.message.reply_text(
+                    f"Буду рад снова пообщаться с вами, {user}.",
+                    reply_markup=ReplyKeyboardRemove())
+            else:
+                update.message.reply_text(
+                    f"I will glad to talk to you again, {user}.",
+                    reply_markup=ReplyKeyboardRemove())
+        elif update.message.text == "Расскажи что-нибудь" or update.message.text == "Tell me something":
             talking(update, context, story=True)
         else:
             talking(update, context)
@@ -261,9 +293,14 @@ def button_pressed(update, context):
             parse_mode=telegram.ParseMode.HTML)
     elif choice == "talk":
         talk = 1
-        query.edit_message_text(
+        if language == "ru":
+            query.edit_message_text(
             text=f"{user}, давайте поболтаем!",
             parse_mode=telegram.ParseMode.HTML)
+        else:
+            query.edit_message_text(
+                text=f"{user}, let's talk!",
+                parse_mode=telegram.ParseMode.HTML)
     elif choice == "look":
         pass
     elif choice == "water":

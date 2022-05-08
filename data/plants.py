@@ -8,6 +8,5 @@ class Plant(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer,
                            primary_key=True, autoincrement=True)
     latin_name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    info = sqlalchemy.Column(sqlalchemy.String, nullable=True)
 
 
