@@ -339,12 +339,12 @@ def message(update, context):
                 parse_mode=telegram.ParseMode.HTML, reply_markup=reply_markup)
     if current_plant is not None and not talk and not add and not water:
         button_list_ru = [
-            InlineKeyboardButton("Полить растение", callback_data="add"),
+            InlineKeyboardButton("Полить растение", callback_data="water"),
             InlineKeyboardButton("Посмотреть сад", callback_data="look"),
             InlineKeyboardButton("Поговорить", callback_data="talk")
         ]
         button_list_en = [
-            InlineKeyboardButton("Pour a plant", callback_data="add"),
+            InlineKeyboardButton("Pour a plant", callback_data="water"),
             InlineKeyboardButton("View the garden", callback_data="look"),
             InlineKeyboardButton("Talk", callback_data="talk")
         ]
@@ -354,7 +354,7 @@ def message(update, context):
                 f"Не хотите полить свое растение, {user}?",
                 parse_mode=telegram.ParseMode.HTML, reply_markup=reply_markup)
         else:
-            reply_markup = InlineKeyboardMarkup([button_list_ru])
+            reply_markup = InlineKeyboardMarkup([button_list_en])
             update.message.reply_text(
                 f"Do you want to pour your plant, {user}?",
                 parse_mode=telegram.ParseMode.HTML, reply_markup=reply_markup)
